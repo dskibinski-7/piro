@@ -84,8 +84,26 @@ def find_base(vertices):
 
 
 def find_sides(vertices, base):
-    pass
-
+    
+    base_start_vertex_index = vertices.index(base[0])
+    base_end_vertex_index = vertices.index(base[1])
+    
+    #wierzcholek pierwszego boku (znajdujacego sie 'nad' wierzcholkiem startowym podstawy)
+    try:
+        #jest to element poprzedzajacy na liscie wierzcholkow
+        side_overstart_vertex = vertices[base_start_vertex_index-1]
+    except IndexError:
+        side_overstart_vertex = vertices[-1]
+    
+    #wierzcholek drugiego boku (znajdujacego sie 'nad' wierzcholkiem koncowym podstawy)
+    try:
+        #jest to element kolejny na liscie wierzcholkow
+        side_overend_vertex = vertices[base_end_vertex_index+1]
+    except IndexError:
+        side_overend_vertex = vertices[0]
+        
+    
+    return side_overstart_vertex, side_overend_vertex
 
 features = {}
 
@@ -95,15 +113,23 @@ images, smallest_shape = read_images(6, ".\set0")
 i=0
 for image in images:
     #smallest
-    image = cv2.resize(image, (smallest_shape[0], smallest_shape[1]))
+    image = cv2.resize(image, (smallest_shape[1], smallest_shape[0]))
 
     
     vertices = find_vertices(image)
     base_length, base_cord = find_base(vertices)
-    #sides = find_sides...
+    first_side, second_side = find_sides(vertices, base_cord)
     features[i] = {'num_of_vertices':len(vertices), 'base_length':base_length}
     
+    image = cv2.circle(image, base_cord[0], radius=2, color=(0, 255, 0), thickness=-1)
+    image = cv2.circle(image, base_cord[1], radius=2, color=(170, 245, 145), thickness=-1)
+    
+    image = cv2.circle(image, first_side, radius=2, color=(255, 0, 0), thickness=-1)
+    image = cv2.circle(image, second_side, radius=2, color=(245, 145, 180), thickness=-1)
 
+    plt.figure()
+    plt.imshow(image)
+    plt.show 
 
     
     i+=1
