@@ -8,17 +8,17 @@ import numpy as np
 
 def read_images(num_of_images, path):
     images = []
-    smallest_sum_shape = float('inf')
+    smallest_width = float('inf')
     for im in range(num_of_images):
         filename = os.path.join(path, str(im)+'.png')
         img = cv2.imread(filename)
         images.append(img)
         
-        shape = img.shape
-        if shape[0]+shape[1] < smallest_sum_shape:
-            smallest_shape = shape
+        curr_width = img.shape[1]
+        if curr_width < smallest_width:
+            smallest_width = curr_width
     
-    return images, smallest_shape
+    return images, smallest_width
 
     
 def find_vertices(img):
@@ -108,18 +108,30 @@ def find_sides(vertices, base):
 features = {}
 
 
-images, smallest_shape = read_images(6, ".\set0") 
+images, smallest_width = read_images(6, ".\set0") 
 
 i=0
 for image in images:
     #smallest
-    image = cv2.resize(image, (smallest_shape[1], smallest_shape[0]))
+    #nowe skalowanie - procentowe wzgledem szerokosci najmniejszego (aby zachować k)
+    
+    scale = smallest_width/image.shape[1]
+
+    scaled_width = int(image.shape[1]*scale)
+    scaled_height = int(image.shape[0]*scale)
+    
+    image = cv2.resize(image, (scaled_width, scaled_height))
+    #image = cv2.resize(image, (smallest_shape[1], smallest_shape[0]))
 
     
     vertices = find_vertices(image)
     base_length, base_cord = find_base(vertices)
     first_side, second_side = find_sides(vertices, base_cord)
     features[i] = {'num_of_vertices':len(vertices), 'base_length':base_length}
+    
+    #in find_sides function add their length, 
+    #add new function that counts k and then scale figure with k and check in sides matches
+    
     
     image = cv2.circle(image, base_cord[0], radius=2, color=(0, 255, 0), thickness=-1)
     image = cv2.circle(image, base_cord[1], radius=2, color=(170, 245, 145), thickness=-1)
