@@ -1,6 +1,4 @@
 import os
-from skimage import io
-from skimage import measure 
 from matplotlib import pyplot as plt
 import cv2
 import numpy as np
@@ -8,17 +6,17 @@ import numpy as np
 
 def read_images(num_of_images, path):
     images = []
-    biggest_width = 0
+    smallest_width = float('inf')
     for im in range(num_of_images):
         filename = os.path.join(path, str(im)+'.png')
         img = cv2.imread(filename)
         images.append(img)
         
         curr_width = img.shape[1]
-        if curr_width > biggest_width:
-            biggest_width = curr_width
+        if curr_width < smallest_width:
+            smallest_width = curr_width
     
-    return images, biggest_width
+    return images, smallest_width
 
     
 def find_vertices(img):
@@ -32,7 +30,7 @@ def find_vertices(img):
     # Going through every contours found in the image.
     for cnt in contours :
 
-        approx = cv2.approxPolyDP(cnt, 0.009 * cv2.arcLength(cnt, True), True)
+        approx = cv2.approxPolyDP(cnt, 0.005 * cv2.arcLength(cnt, True), True)
       
         for appr in approx:
             x=appr[0][0]
@@ -91,60 +89,93 @@ def find_sides(vertices, base):
         side_overend_vertex = vertices[0]
         
     
-    return side_overstart_vertex, side_overend_vertex
+    first_side_length = np.sqrt((side_overstart_vertex[0]-base[0][0])**2+(side_overstart_vertex[1]-base[0][1])**2)
+    second_side_length = np.sqrt((side_overend_vertex[0]-base[1][0])**2+(side_overend_vertex[1]-base[1][1])**2)
+    
+    return side_overstart_vertex, side_overend_vertex, first_side_length, second_side_length
+
+
+
+
+def check_similitary_scale(features):
+    #bierzemy dlugosc podstawy danego image i porownujemy do dlugosci pozostalych
+    #powstaje nam k
+    
+    similitary = {}
+    
+    #skalujemy przez k pozostale image i sprawdzamy gdzie dlugosci bokow pasuja do siebie
+    for i in range(len(features)):
+        i_base = features[i]['base_length']
+        i_first_side = features[i]['first_side_length']
+        i_second_side = features[i]['second_side_length']
+        for j in range(len(features)):
+            if i == j:
+                continue
+            j_base = features[i]['base_length']
+            j_first_side = features[j]['first_side_length']
+            j_second_side = features[j]['second_side_length']
+            #skala
+            k = i_base/j_base
+            
+            scaled_j_first_side = k*j_first_side
+            scaled_j_second_side = k*j_second_side
+            
+            sum_l_side = i_first_side + scaled_j_second_side
+            sum_r_side = i_second_side + scaled_j_first_side
+            
+            #CZY MOŻE PODZIELIC TO JESZCZE PRZEZ 'COS'? ze wzgledu na rozne wielkosci tych prostokatow roznica dlugosci moze nie byc tak miarodajna
+            abs_diff = abs(sum_l_side - sum_r_side)
+            
+            similitary[str(i)+'-'+str(j)] = abs_diff
+            
+    return similitary
+            
+    
+    
+    #funckja niech dorzuca do slownika features do ktorego dany obrazek najbardziej by pasowal na podstawie skali podobienstwa
+
+
+
+
+
 
 features = {}
-
-
-images, biggest_width = read_images(6, ".\set0") 
+images, smallest_width = read_images(6, ".\set0") 
 
 i=0
 for image in images:
-    
-    if i ==3:
-        print('show me this piece of shit')
-    
-    #smallest
-    #nowe skalowanie - procentowe wzgledem szerokosci najmniejszego (aby zachować k)
-    
-#    scale = biggest_width/image.shape[1]
-#
-#    scaled_width = int(image.shape[1]*scale)
-#    scaled_height = int(image.shape[0]*scale)
-#    
-#    image = cv2.resize(image, (scaled_width, scaled_height))
+
     #image = cv2.resize(image, (smallest_shape[1], smallest_shape[0]))
 
     
     vertices = find_vertices(image)
     base_length, base_cord = find_base(vertices)
-    first_side, second_side = find_sides(vertices, base_cord)
-    features[i] = {'num_of_vertices':len(vertices), 'base_length':base_length}
+    first_side_vertex, second_side_vertex, first_side_length, second_side_length = find_sides(vertices, base_cord)
     
-    #in find_sides function add their length, 
-    #add new function that counts k and then scale figure with k and check in sides matches
+    features[i] = {'base_length':base_length, 'first_side_length':first_side_length,
+            'second_side_length':second_side_length}
     
-    
-    image = cv2.circle(image, base_cord[0], radius=2, color=(0, 255, 0), thickness=-1)
-    image = cv2.circle(image, base_cord[1], radius=2, color=(170, 245, 145), thickness=-1)
-    
-    image = cv2.circle(image, first_side, radius=2, color=(255, 0, 0), thickness=-1)
-    image = cv2.circle(image, second_side, radius=2, color=(245, 145, 180), thickness=-1)
+    testowe = check_similitary_scale(features)
 
-    plt.figure()
-    plt.imshow(image)
-    plt.show 
+    #skalowanie obrazow:
+#    scale = smallest_width/image.shape[1]
+#    scaled_width = int(image.shape[1]*scale)
+#    scaled_height = int(image.shape[0]*scale)  
+#    image = cv2.resize(image, (scaled_width, scaled_height))
+    
+    #features[i]['num of vertices'] = find_vertices(image)
+    
+    #wyswietlenei obrazow
+#    image = cv2.circle(image, base_cord[0], radius=1, color=(0, 255, 0), thickness=-1)
+#    image = cv2.circle(image, base_cord[1], radius=1, color=(170, 245, 145), thickness=-1)
+#    
+#    image = cv2.circle(image, first_side_vertex, radius=1, color=(255, 0, 0), thickness=-1)
+#    image = cv2.circle(image, second_side_vertex, radius=1, color=(245, 145, 180), thickness=-1)
+#
+#    plt.figure()
+#    plt.imshow(image)
+#    plt.show 
 
     
     i+=1
 
-
-#focus na liczbie krawedzi i wierzcholkow
-
-#plt.imshow(image)
-#plt.show           
-        
-        
-#DODATKOWO - KRAWEDZIE (PODSTAWA I BOKI) POWINNY BYC DLUGOSCIAMI PODOBNYMI DO ODPOWIADAJACEGO PROSTOKAT
-            #TJ PODSTAWA DO PODSTAWY TO SKALA, - INFO ZESZYT
-            #DO TEGO ODLEGLOSC OD PODSTAWY DO WIERZCHOLKA? DLUGOSCI TEZ POWINNY SUMOWAC SIE DO DLUGOSCI BOKU
