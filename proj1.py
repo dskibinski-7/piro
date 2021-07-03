@@ -8,17 +8,17 @@ import numpy as np
 
 def read_images(num_of_images, path):
     images = []
-    smallest_width = float('inf')
+    biggest_width = 0
     for im in range(num_of_images):
         filename = os.path.join(path, str(im)+'.png')
         img = cv2.imread(filename)
         images.append(img)
         
         curr_width = img.shape[1]
-        if curr_width < smallest_width:
-            smallest_width = curr_width
+        if curr_width > biggest_width:
+            biggest_width = curr_width
     
-    return images, smallest_width
+    return images, biggest_width
 
     
 def find_vertices(img):
@@ -32,27 +32,15 @@ def find_vertices(img):
     # Going through every contours found in the image.
     for cnt in contours :
 
-        approx = cv2.approxPolyDP(cnt, 0.005 * cv2.arcLength(cnt, True), True)
+        approx = cv2.approxPolyDP(cnt, 0.009 * cv2.arcLength(cnt, True), True)
       
-        # draws boundary of contours.
-        #cv2.drawContours(img, [approx], 0, (0, 0, 255), 5) 
-      
-        # Used to flatted the array containing
-        # the co-ordinates of the vertices.
-        n = approx.ravel() 
-        i = 0
-      
-        for j in n :
-            if(i % 2 == 0):
-                x = n[i]
-                y = n[i + 1]
-      
-                vertices.append((x,y))
-                #img = cv2.circle(img, (x,y), radius=3, color=(0, 255, 0), thickness=-1)
-                
-    
-            i = i + 1
-    
+        for appr in approx:
+            x=appr[0][0]
+            y=appr[0][1]
+            vertices.append((x,y))
+        break
+    #najpierw slownik, potem lista, poniewaz oryginalnie (od razu lista) byly problemy z kolejnoscia wierzcholkow przy rozpoznawaniu bokow na podstawie podstawy
+    #na liste:
     return vertices
 
 
@@ -108,19 +96,23 @@ def find_sides(vertices, base):
 features = {}
 
 
-images, smallest_width = read_images(6, ".\set0") 
+images, biggest_width = read_images(6, ".\set0") 
 
 i=0
 for image in images:
+    
+    if i ==3:
+        print('show me this piece of shit')
+    
     #smallest
     #nowe skalowanie - procentowe wzgledem szerokosci najmniejszego (aby zachować k)
     
-    scale = smallest_width/image.shape[1]
-
-    scaled_width = int(image.shape[1]*scale)
-    scaled_height = int(image.shape[0]*scale)
-    
-    image = cv2.resize(image, (scaled_width, scaled_height))
+#    scale = biggest_width/image.shape[1]
+#
+#    scaled_width = int(image.shape[1]*scale)
+#    scaled_height = int(image.shape[0]*scale)
+#    
+#    image = cv2.resize(image, (scaled_width, scaled_height))
     #image = cv2.resize(image, (smallest_shape[1], smallest_shape[0]))
 
     
