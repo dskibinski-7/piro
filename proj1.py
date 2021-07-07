@@ -5,6 +5,7 @@ import numpy as np
 import statistics
 import sys
 
+
 def read_images(num_of_images, path):
     images = []
     smallest_width = float('inf')
@@ -28,7 +29,7 @@ def find_vertices(img):
     
     vertices = []
     
-    # Going through every contours found in the image.
+    
     for cnt in contours :
 
         approx = cv2.approxPolyDP(cnt, 0.005 * cv2.arcLength(cnt, True), True)
@@ -38,11 +39,11 @@ def find_vertices(img):
             y=appr[0][1]
             vertices.append((x,y))
         
-        #jezeli znalazlo wierzcholki z biezacego konturu to git
+
         if len(approx)>5:
             break
 
-    ##POMOCNICZE
+    #show vertices 
 #    i=0
 #    for vertex in vertices:
 #        img = cv2.circle(img, vertex, radius=1, color=(255,0,255), thickness=-1)
@@ -51,13 +52,11 @@ def find_vertices(img):
 #    plt.figure()
 #    plt.imshow(img)
 #    plt.show
-    ##</POMOCNICZE>
     return vertices
   
 
 def find_base(vertices):
     
-    #base is probably? the longest segment
     max_dist = 0
     
     for v in range(len(vertices)):
@@ -146,9 +145,7 @@ def count_vertex_base_distance(base_cord, vertices):
     return distances
         
 
-#przekazac jeden side#which side 0/1
 def count_side_vertex_distance(vertices, base_cord, side_vertex, which_side):
-    #uruchomic dwa razy - dla kazdej strony
     #wzor na funkcje przechodzaca przez jeden z bokow
     #funkcja liniowa postac ogolna:
     x_a = base_cord[which_side][0]
@@ -162,8 +159,7 @@ def count_side_vertex_distance(vertices, base_cord, side_vertex, which_side):
     C=y_b*x_a - y_a*x_b
     
     #wyrzucenie podstaw - sprawdzam tylko punkty na lamanej
-
-    
+   
     distances = {}
     for vertex in vertices:
         if vertex == base_cord[0] or vertex == base_cord[1]:
@@ -178,8 +174,6 @@ def count_side_vertex_distance(vertices, base_cord, side_vertex, which_side):
     
 
 def compare_vertex_base_distances(features):
-    #w innej funkcji sprawdzenie dystansow pomiedzy vertex-base (dodanie do features)
-    #tutaj porownanie po przeskalowaniu odpowiedniego motherfuckera
     comparison = {}
     for i in range(len(features)):
         i_base = features[i]['base_length']
@@ -219,8 +213,7 @@ def compare_vertex_base_distances(features):
                 
             #znajdz odpowiadajace wierzcholki (najmniejsza roznica miedzy side odleglosciami)
             vertices_to_compare = []
-            #^wierzcholki, ktore najprawdopodobniej sa sobie odpowiadajace
-            #potem na ich podstawie poszukac w base odleglosci i sikalafą
+
             for i_item in i_fside_vertex_distances.items():
                 smallest_diff = float('inf')
                 for j_item in scaled_j_sside_vertex_distances.items():
@@ -296,56 +289,53 @@ def compare_vertex_base_distances(features):
             
     
 
-
-
-
-
-#path_to_images = '.\set0'
-#amount_of_images = 6
-
-
-try:
-    path_to_images = str(sys.argv[1])
-    amount_of_images = int(sys.argv[2])
-    images, smallest_width = read_images(amount_of_images, path_to_images) 
-except:
-    print('Invalid input')
-    exit()
+def compare_images():
+    #path_to_images = '.\set8'
+    #amount_of_images = 100
     
-features = {}  
-i=0
-for image in images:
-
+    try:
+        path_to_images = str(sys.argv[1])
+        amount_of_images = int(sys.argv[2])
+        images, smallest_width = read_images(amount_of_images, path_to_images) 
+    except:
+        print('Invalid input')
+        exit()
+        
+    features = {}  
+    i=0
+    for image in images:
+     
+        vertices = find_vertices(image)
+        base_length, base_cord = find_base(vertices)
+        first_side_vertex, second_side_vertex, first_side_length, second_side_length = find_sides(vertices, base_cord)
+        base_vertices_distances = count_vertex_base_distance(base_cord, vertices)
+        first_side_vertices_distances = count_side_vertex_distance(vertices, base_cord, first_side_vertex, 0)
+        second_side_vertices_distances = count_side_vertex_distance(vertices, base_cord, second_side_vertex, 1)
+        
+           
+        features[i] = {'vertices_len':len(vertices), 'vertices_cord':vertices, 'base_cord':base_cord,'base_length':base_length, 'first_side_length':first_side_length,
+                'second_side_length':second_side_length, 'base_vertices_distances': base_vertices_distances,
+                'first_side_vertices_distances':first_side_vertices_distances, 'second_side_vertices_distances':second_side_vertices_distances}
+        
+      
+        i+=1
     
-    vertices = find_vertices(image)
-    base_length, base_cord = find_base(vertices)
-    first_side_vertex, second_side_vertex, first_side_length, second_side_length = find_sides(vertices, base_cord)
-    base_vertices_distances = count_vertex_base_distance(base_cord, vertices)
-    first_side_vertices_distances = count_side_vertex_distance(vertices, base_cord, first_side_vertex, 0)
-    second_side_vertices_distances = count_side_vertex_distance(vertices, base_cord, second_side_vertex, 1)
+    #similarity = check_similarity_scale(features)
+    compare_vertex_base_distances(features)
+    
+    #wyprintuj wszystkie
+    for i in range(len(features)):
+        matches = features[i]['match_by_length_vertex_base_variance']
+        for match in matches:
+            print(match, end=' ', sep=' ')
+        print('')
+    
+    #wyprintuj tylko pierwsze
+    #a=[]
+    #for i in range(len(features)):
+    #    #print(features[i]['match_by_length_vertex_base_variance'][0])
+    #    a.append(features[i]['match_by_length_vertex_base_variance'][0])
+    #print(a)
     
     
-    
-    features[i] = {'vertices_len':len(vertices), 'vertices_cord':vertices, 'base_cord':base_cord,'base_length':base_length, 'first_side_length':first_side_length,
-            'second_side_length':second_side_length, 'base_vertices_distances': base_vertices_distances,
-            'first_side_vertices_distances':first_side_vertices_distances, 'second_side_vertices_distances':second_side_vertices_distances}
-    
-  
-    i+=1
-
-#similarity = check_similarity_scale(features)
-compare_vertex_base_distances(features)
-
-#wyprintuj wszystkie
-for i in range(len(features)):
-    matches = features[i]['match_by_length_vertex_base_variance']
-    for match in matches:
-        print(match, end=' ', sep=' ')
-    print('')
-
-#wyprintuj tylko peirwsze
-#a=[]
-#for i in range(len(features)):
-#    #print(features[i]['match_by_length_vertex_base_variance'][0])
-#    a.append(features[i]['match_by_length_vertex_base_variance'][0])
-#print(a)
+compare_images()
